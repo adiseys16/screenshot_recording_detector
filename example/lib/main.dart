@@ -170,7 +170,7 @@ class _MyAppState extends State<MyApp> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Platform: ${event.platform.toUpperCase()}'),
-            Text('Time: ${event.timestamp.toLocal()}'),
+            Text('Time: ${event.timestamp!.toLocal()}'),
           ],
         ),
       ),
