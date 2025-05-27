@@ -146,31 +146,78 @@ class ScreenshotRecordingDetectorPlugin : FlutterPlugin, MethodCallHandler {
   }
 
 
+  // @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
+  // private fun isScreenRecording(): Boolean {
+  //   // Method 1: Check for virtual displays
+  //   val displayManager = context?.getSystemService(Context.DISPLAY_SERVICE) as? DisplayManager
+  //   displayManager?.displays?.forEach { display ->
+  //     if (display.flags and Display.FLAG_SECURE != 0 ||
+  //       display.flags and Display.FLAG_PRESENTATION != 0 ||
+  //       display.name.contains("Overlay") ||
+  //       display.name.contains("Virtual")) {
+  //       return true
+  //     }
+  //   }
+
+  //   // Method 2: Check for media projection (alternative approach)
+  //   if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+  //     val mediaProjectionManager = context?.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as? MediaProjectionManager
+  //     try {
+  //       // Alternative check without reflection
+  //       val intent = mediaProjectionManager?.createScreenCaptureIntent()
+  //       if (intent != null && intent.resolveActivity(context?.packageManager!!) != null) {
+  //         // This doesn't guarantee recording is active, but suggests the capability exists
+  //         return true
+  //       }
+  //     } catch (e: Exception) {
+  //       // Fall through
+  //     }
+  //   }
+
+  //   return false
+  // }
   @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
   private fun isScreenRecording(): Boolean {
     // Method 1: Check for virtual displays
     val displayManager = context?.getSystemService(Context.DISPLAY_SERVICE) as? DisplayManager
     displayManager?.displays?.forEach { display ->
-      if (display.flags and Display.FLAG_SECURE != 0 ||
-        display.flags and Display.FLAG_PRESENTATION != 0 ||
-        display.name.contains("Overlay") ||
-        display.name.contains("Virtual")) {
-        return true
+      val isVirtual = display.name.contains("virtual", ignoreCase = true)
+      val isOverlay = display.name.contains("overlay", ignoreCase = true)
+      val isPresentation = (display.flags and Display.FLAG_PRESENTATION) != 0
+      val isNotSecure = (display.flags and Display.FLAG_SECURE) == 0
+
+      if ((isVirtual || isOverlay || isPresentation) && isNotSecure) {
+          return true
       }
     }
 
-    // Method 2: Check for media projection (alternative approach)
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+    // Method 2: On Android 10+ check if MediaProjection intent is available (heuristic)
+    // if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+    //   val mediaProjectionManager = context?.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as? MediaProjectionManager
+    //   try {
+    //     val intent = mediaProjectionManager?.createScreenCaptureIntent()
+    //     val hasProjectionApp = intent?.resolveActivity(context?.packageManager!!) != null
+    //     if (hasProjectionApp) {
+    //       return true // Indicates possibility, not certainty
+    //     }
+    //   } catch (e: Exception) {
+    //     // Log or handle error
+    //   }
+    // }
+
+    // Method 3: Android 15+ (API 34): Use getActiveProjectionInfo (limited usage)
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
       val mediaProjectionManager = context?.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as? MediaProjectionManager
       try {
-        // Alternative check without reflection
-        val intent = mediaProjectionManager?.createScreenCaptureIntent()
-        if (intent != null && intent.resolveActivity(context?.packageManager!!) != null) {
-          // This doesn't guarantee recording is active, but suggests the capability exists
-          return true
+        val info = mediaProjectionManager?.activeProjectionInfo
+        if (info != null) {
+          // Check if the projection is ongoing by another app
+          if (info.packageName != context?.packageName) {
+              return true
+          }
         }
-      } catch (e: Exception) {
-        // Fall through
+      } catch (e: SecurityException) {
+        // Not allowed to access projection info (depends on app's permission and system level)
       }
     }
 
