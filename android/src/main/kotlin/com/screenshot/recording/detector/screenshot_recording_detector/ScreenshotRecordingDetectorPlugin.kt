@@ -184,7 +184,7 @@ class ScreenshotRecordingDetectorPlugin : FlutterPlugin, MethodCallHandler {
       val isVirtual = display.name.contains("virtual", ignoreCase = true)
       val isOverlay = display.name.contains("overlay", ignoreCase = true)
       val isPresentation = (display.flags and Display.FLAG_PRESENTATION) != 0
-      val isNotSecure = (display.flags and Display.FLAG_SECURE) == 0
+      val isNotSecure = (display.flags and Display.FLAG_SECURE) != 0
 
       if ((isVirtual || isOverlay || isPresentation) && isNotSecure) {
           return true
