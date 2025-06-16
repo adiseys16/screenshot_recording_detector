@@ -178,18 +178,42 @@ class ScreenshotRecordingDetectorPlugin : FlutterPlugin, MethodCallHandler {
   // }
   @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
   private fun isScreenRecording(): Boolean {
-    // Method 1: Check for virtual displays
     val displayManager = context?.getSystemService(Context.DISPLAY_SERVICE) as? DisplayManager
-    displayManager?.displays?.forEach { display ->
-      val isVirtual = display.name.contains("virtual", ignoreCase = true)
-      val isOverlay = display.name.contains("overlay", ignoreCase = true)
-      val isPresentation = (display.flags and Display.FLAG_PRESENTATION) != 0
-      val isNotSecure = (display.flags and Display.FLAG_SECURE) != 0
+    val displays = displayManager?.displays ?: return false
 
-      if ((isVirtual || isOverlay || isPresentation) && isNotSecure) {
-          return true
-      }
+    // Jika ada lebih dari satu display, kemungkinan sedang casting/mirroring
+    if (displays.size > 1) {
+        Log.d("ScreenShareGuys", "More than one display detected!")
+        return true
     }
+
+    displays.forEach { display ->
+        val name = display.name.lowercase()
+        Log.d("ScreenShareGuys", "Display: ${display.name}, flags: ${display.flags}")
+
+        if (
+            name.contains("virtual") ||
+            name.contains("cast") ||
+            name.contains("record") ||
+            name.contains("mirror") ||
+            name.contains("presentation") ||
+            name.contains("external")
+        ) {
+            return true
+        }
+    }
+    // Method 1: Check for virtual displays
+    // val displayManager = context?.getSystemService(Context.DISPLAY_SERVICE) as? DisplayManager
+    // displayManager?.displays?.forEach { display ->
+    //   val isVirtual = display.name.contains("virtual", ignoreCase = true)
+    //   val isOverlay = display.name.contains("overlay", ignoreCase = true)
+    //   val isPresentation = (display.flags and Display.FLAG_PRESENTATION) != 0
+    //   val isNotSecure = (display.flags and Display.FLAG_SECURE) != 0
+
+    //   if ((isVirtual || isOverlay || isPresentation) && isNotSecure) {
+    //       return true
+    //   }
+    // }
 
     // Method 2: On Android 10+ check if MediaProjection intent is available (heuristic)
     // if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
