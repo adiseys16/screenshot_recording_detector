@@ -8,6 +8,7 @@ import android.database.ContentObserver
 import android.hardware.display.DisplayManager
 import android.media.projection.MediaProjectionManager
 import android.net.Uri
+import android.util.Log
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
@@ -230,20 +231,20 @@ class ScreenshotRecordingDetectorPlugin : FlutterPlugin, MethodCallHandler {
     // }
 
     // Method 3: Android 15+ (API 34): Use getActiveProjectionInfo (limited usage)
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-      val mediaProjectionManager = context?.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as? MediaProjectionManager
-      try {
-        val info = mediaProjectionManager?.activeProjectionInfo
-        if (info != null) {
-          // Check if the projection is ongoing by another app
-          if (info.packageName != context?.packageName) {
-              return true
-          }
-        }
-      } catch (e: SecurityException) {
-        // Not allowed to access projection info (depends on app's permission and system level)
-      }
-    }
+    // if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+    //   val mediaProjectionManager = context?.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as? MediaProjectionManager
+    //   try {
+    //     val info = mediaProjectionManager?.activeProjectionInfo
+    //     if (info != null) {
+    //       // Check if the projection is ongoing by another app
+    //       if (info.packageName != context?.packageName) {
+    //           return true
+    //       }
+    //     }
+    //   } catch (e: SecurityException) {
+    //     // Not allowed to access projection info (depends on app's permission and system level)
+    //   }
+    // }
 
     return false
   }
