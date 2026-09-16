@@ -1,3 +1,10 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-  package="com.screenshot.recording.detector.screenshot_recording_detector">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.DETECT_SCREEN_CAPTURE" />
+    <uses-permission android:name="android.permission.DETECT_SCREEN_RECORDING" />
+    <!-- Runtime grants are the responsibility of the host app (API 23..33).
+         Remove these declarations via manifest merger if not using legacy detection. -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"
+        android:maxSdkVersion="33" />
 </manifest>

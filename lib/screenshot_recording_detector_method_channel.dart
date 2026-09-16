@@ -1,49 +1,54 @@
 import 'dart:async';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-
 import 'screenshot_recording_detector_platform_interface.dart';
 
-/// The method channel implementation of [ScreenshotRecordingDetectorPlatform].
 class MethodChannelScreenshotRecordingDetector
     extends ScreenshotRecordingDetectorPlatform {
-  /// The method channel used to interact with the native platform.
   @visibleForTesting
   final methodChannel = const MethodChannel('screenshot_recording_detector');
-
-  /// The event channel used to receive detection events from the native platform.
   @visibleForTesting
   final eventChannel = const EventChannel('screenshot_recording_events');
 
+  // One platform broadcast stream per implementation, shared by all consumers.
+  late final Stream<Map<dynamic, dynamic>> _events =
+      eventChannel.receiveBroadcastStream().map((dynamic event) {
+    if (event is! Map) {
+      throw const FormatException(
+          'Expected a map from screenshot_recording_events');
+    }
+    return event.cast<dynamic, dynamic>();
+  });
+
   @override
-  Future<void> initialize() async {
-    await methodChannel.invokeMethod('initialize');
+  Future<void> initialize() => methodChannel.invokeMethod<void>('initialize');
+
+  @override
+  Stream<Map<dynamic, dynamic>> get detectionStream => _events;
+
+  @override
+  Future<bool> get isScreenRecording async =>
+      await methodChannel.invokeMethod<bool>('isScreenRecording') ?? false;
+
+  @override
+  Future<Map<String, dynamic>> get detectionStatus async {
+    try {
+      final value = await methodChannel.invokeMapMethod<String, dynamic>(
+        'getDetectionStatus',
+      );
+      return value == null
+          ? <String, dynamic>{'statusAvailable': false}
+          : <String, dynamic>{...value, 'statusAvailable': true};
+    } on MissingPluginException {
+      // Unchanged iOS source and older platform implementations are supported.
+      return <String, dynamic>{'statusAvailable': false};
+    }
   }
 
   @override
-  Stream<Map<dynamic, dynamic>> get detectionStream {
-    return eventChannel.receiveBroadcastStream().map((event) {
-      if (event is Map) {
-        return event.cast<dynamic, dynamic>();
-      }
-      return <dynamic, dynamic>{};
-    });
-  }
+  Future<void> setBlockScreenshots(bool block) =>
+      methodChannel.invokeMethod<void>('setBlockScreenshots', block);
 
   @override
-  Future<bool> get isScreenRecording async {
-    final result = await methodChannel.invokeMethod<bool>('isScreenRecording');
-    return result ?? false;
-  }
-
-  @override
-  Future<void> setBlockScreenshots(bool block) async {
-    await methodChannel.invokeMethod('setBlockScreenshots', block);
-  }
-
-  @override
-  Future<void> dispose() async {
-    await methodChannel.invokeMethod('dispose');
-  }
+  Future<void> dispose() => methodChannel.invokeMethod<void>('dispose');
 }

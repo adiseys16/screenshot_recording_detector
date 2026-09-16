@@ -39,6 +39,10 @@ abstract class ScreenshotRecordingDetectorPlatform extends PlatformInterface {
     throw UnimplementedError('isScreenRecording has not been implemented.');
   }
 
+  /// Optional diagnostic API; existing platform implementations need not change.
+  Future<Map<String, dynamic>> get detectionStatus async =>
+      <String, dynamic>{'statusAvailable': false};
+
   /// Set Screenshots ability
   Future<void> setBlockScreenshots(bool block) {
     throw UnimplementedError('setBlockScreenshots has not been implemented.');

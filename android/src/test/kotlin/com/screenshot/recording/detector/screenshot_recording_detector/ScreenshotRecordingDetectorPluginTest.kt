@@ -1,27 +1,76 @@
 package com.screenshot.recording.detector.screenshot_recording_detector
 
+import android.net.Uri
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
-import kotlin.test.Test
-import org.mockito.Mockito
+import org.junit.Assert.*
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
-/*
- * This demonstrates a simple unit test of the Kotlin portion of this plugin's implementation.
- *
- * Once you have built the plugin's example app, you can run these tests from the command
- * line by running `./gradlew testDebugUnitTest` in the `example/android/` directory, or
- * you can run them directly from IDEs that support JUnit such as Android Studio.
- */
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [28])
+class ScreenshotRecordingDetectorPluginTest {
+    private class Reply : MethodChannel.Result {
+        var value: Any? = null
+        var error: String? = null
+        var notImplemented = false
+        override fun success(result: Any?) { value = result }
+        override fun error(code: String, message: String?, details: Any?) { error = code }
+        override fun notImplemented() { notImplemented = true }
+    }
 
-internal class ScreenshotRecordingDetectorPluginTest {
-  @Test
-  fun onMethodCall_getPlatformVersion_returnsExpectedValue() {
-    val plugin = ScreenshotRecordingDetectorPlugin()
+    @Test fun rootNotificationIsNotTheQueryEndpoint() {
+        assertNotEquals(Uri.parse("content://media/external"), LegacyMediaQuery.collection)
+        assertEquals("content://media/external/images/media", LegacyMediaQuery.collection.toString())
+    }
 
-    val call = MethodCall("getPlatformVersion", null)
-    val mockResult: MethodChannel.Result = Mockito.mock(MethodChannel.Result::class.java)
-    plugin.onMethodCall(call, mockResult)
+    @Test fun providerIllegalStateDoesNotEscapeBoundary() {
+        var failure: RuntimeException? = null
+        val result = LegacyMediaQuery.safely<Int>({ failure = it }) {
+            throw IllegalStateException("Unknown URL: content://media/external is hidden API")
+        }
+        assertNull(result)
+        assertTrue(failure is IllegalStateException)
+    }
 
-    Mockito.verify(mockResult).success("Android " + android.os.Build.VERSION.RELEASE)
-  }
+    @Test fun permissionAndInvalidQueryFailuresAreContained() {
+        listOf(SecurityException("revoked"), IllegalArgumentException("column")).forEach { exception ->
+            var caught: RuntimeException? = null
+            assertNull(LegacyMediaQuery.safely<Int>({ caught = it }) { throw exception })
+            assertSame(exception, caught)
+        }
+    }
+
+    @Test fun screenshotHeuristicIsNotAnyScreenOrCaptureName() {
+        assertTrue(LegacyMediaQuery.looksLikeScreenshot("Pictures/Screenshots/Screenshot_123.png"))
+        assertTrue(LegacyMediaQuery.looksLikeScreenshot("SCREEN_SHOT.png"))
+        assertFalse(LegacyMediaQuery.looksLikeScreenshot("landscape_screen.png"))
+        assertFalse(LegacyMediaQuery.looksLikeScreenshot("camera_capture.jpg"))
+    }
+
+    @Test fun repeatedInitializeAndDisposeWithoutActivityAreSafe() {
+        val plugin = ScreenshotRecordingDetectorPlugin()
+        repeat(2) { plugin.onMethodCall(MethodCall("initialize", null), Reply()) }
+        val status = Reply()
+        plugin.onMethodCall(MethodCall("getDetectionStatus", null), status)
+        val map = status.value as Map<*, *>
+        assertEquals("inactive", map["screenshot"])
+        assertEquals("unsupported", map["recording"])
+        assertNull(map["isRecording"])
+        repeat(2) { plugin.onMethodCall(MethodCall("dispose", null), Reply()) }
+    }
+
+    @Test fun invalidBlockArgumentReturnsErrorInsteadOfCastCrash() {
+        val reply = Reply()
+        ScreenshotRecordingDetectorPlugin().onMethodCall(MethodCall("setBlockScreenshots", "true"), reply)
+        assertEquals("INVALID_ARGUMENT", reply.error)
+    }
+
+    @Test fun unknownMethodIsNotImplemented() {
+        val reply = Reply()
+        ScreenshotRecordingDetectorPlugin().onMethodCall(MethodCall("unknown", null), reply)
+        assertTrue(reply.notImplemented)
+    }
 }
