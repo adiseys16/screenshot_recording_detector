@@ -12,7 +12,6 @@ import android.os.Handler
 import android.os.HandlerThread
 import android.os.Looper
 import android.provider.MediaStore
-import android.util.Log
 import android.view.WindowManager
 import androidx.annotation.RequiresApi
 import androidx.lifecycle.Lifecycle
